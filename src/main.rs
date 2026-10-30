@@ -1386,8 +1386,11 @@ async fn card_json(wait_ms: u64, verbose: bool) -> Json {
     json(b, StatusCode::OK)
 }
 
-/// `/nfc/scan?wait_ms=` - force a poll now (the reader polls continuously
-/// anyway; this just waits for the next presence change).
+/// `/nfc/scan?wait_ms=` - the same cached read as `/nfc/card`, with a longer
+/// default wait (1000 ms) for a card to appear. It does **not** drive the antenna:
+/// the reader polls continuously, so this can only ever be as fresh as the last
+/// poll. `scan_epoch` below is reserved for a real forced poll if one is ever
+/// needed - see the note in the README - and deliberately has no consumer today.
 async fn get_scan(Query(q): Query<WaitQuery>) -> Json {
     shared(|s| s.scan_epoch = s.scan_epoch.wrapping_add(1)).await;
     let wait = q.wait_ms.unwrap_or(1000) as u64;

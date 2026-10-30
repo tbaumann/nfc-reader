@@ -49,7 +49,7 @@ single `curl`:
 | `GET /nfc/uid` | `{"present":true,"uid":"04-A2-B3-C4","uid_decimal":"004162179196"}`, or `404 {"present":false}` |
 | `GET /nfc/uid?wait_ms=3000` | same, but holds the request open until a card appears (<= 30 s) |
 | `GET /nfc/card` | UID plus `kind`, `sak`, `atqa`, `last_seen_ms` |
-| `GET /nfc/scan?wait_ms=` | force a poll and report what is under the reader |
+| `GET /nfc/scan?wait_ms=` | same read as `/nfc/card`, but waits up to 1000 ms for a card to appear by default |
 | `GET /nfc/ndef` | reads the NDEF message off the card: `{"ok":true,"records":1,"tag":"…","uid":"…","key":"nfc-forum","text":"U:https://example.com","msg_len":16,"b64":"0QEMVQRleGFtcGxlLmNvbQ=="}` |
 | `PUT /nfc/ndef` | writes a whole NDEF message: the body **is** the message (the records, which is what an NDEF library produces); the container is ours. Raw bytes, so binary and long payloads need no escaping |
 | `GET /nfc/rf?on=false` | stop polling and `InRelease` the card; `on=true` resumes |
@@ -156,6 +156,14 @@ the fastest way in.
 
 ## Limits and next steps
 
+- **`/nfc/scan` does not force a poll.** It is a cached read with a longer default
+  wait, identical in body to `/nfc/card`; the `scan_epoch` field is a placeholder for
+  a real forced poll that was never implemented. Nothing in the spooler path needs
+  one (the reader polls every ~150 ms anyway), so it is left alone deliberately -
+  if a caller ever needs "is the *antenna* seeing this, not my cache", implement it
+  the way the write path does: bump an epoch in the handler, have the reader task do
+  the RF round and publish the result, signal a done-signal, and let the handler wait
+  and report (with `503 reader busy` and a defined answer when RF is off).
 - **NDEF writing** covers URI and text records, one or two per message, on MIFARE
   Classic (auth + block writes, trailers never touched, verified by reading back)
   and on Type 2/Ultralight (4-byte page writes, only onto a tag that already has a
