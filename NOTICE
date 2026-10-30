@@ -1,0 +1,10 @@
+nfc-reader
+Copyright 2026 Tilman Baumann
+
+This product is licensed under the Apache License, Version 2.0, or the MIT
+license, at your option (see LICENSE-APACHE and LICENSE-MIT).
+
+It is built on third-party software. The dependency inventory generated from the
+firmware's own dependency graph, the licences of the non-Cargo components that
+end up in the flashed image (the ESP-IDF bootloader, Espressif's prebuilt radio
+libraries), and the texts of those licences are in THIRD_PARTY_LICENSES.md.

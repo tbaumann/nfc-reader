@@ -1,0 +1,130 @@
+[package]
+name = "nfc-reader"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+edition = "2024"
+rust-version = "1.95"
+
+[[bin]]
+name = "nfc-reader"
+path = "./src/main.rs"
+
+# Chip selection is per-board: esp-hal and friends take exactly one chip feature
+# and it arrives through these board features (same shape as the esp-hal examples).
+[features]
+default = ["board-atoms3lite"]
+
+# M5Stack AtomS3 Lite: PN532 on the Grove port (G1/G2), WS2812C on G35,
+# logging over the chip's native USB-Serial-JTAG.
+board-atoms3lite = [
+    "esp-hal/esp32s3",
+    "esp-rtos/esp32s3",
+    "esp-radio/esp32s3",
+    "esp-alloc/esp32s3",
+    "esp-backtrace/esp32s3",
+    "esp-bootloader-esp-idf/esp32s3",
+    "esp-println/esp32s3",
+    "esp-println/jtag-serial",
+    "esp-hal-smartled/esp32s3",
+]
+
+# Generic ESP32 DevKit (WROOM-32, rev3+): SDA=G21, SCL=G22, no addressable LED,
+# logging over the UART bridge.
+board-esp32-devkit = [
+    "esp-hal/esp32",
+    "esp-rtos/esp32",
+    "esp-radio/esp32",
+    "esp-alloc/esp32",
+    "esp-backtrace/esp32",
+    "esp-bootloader-esp-idf/esp32",
+    "esp-println/esp32",
+    "esp-println/uart",
+    "esp-hal-smartled/esp32",
+]
+
+# GET /nfc/raw?cmd=..&args=.. - send a raw PN532 command frame. Bring-up aid.
+raw-api = []
+
+[dependencies]
+esp-hal = { version = "~1.2.2", features = ["unstable", "log-04"] }
+esp-rtos = { version = "0.4.0", features = [
+    "esp-radio",
+    "esp-alloc",
+    "embassy",
+    "log-04",
+] }
+esp-bootloader-esp-idf = { version = "0.6.0", features = ["log-04"] }
+log = "0.4.27"
+# Backend is selected by the board feature (jtag-serial vs uart); esp-println's
+# `auto` would guess at runtime and silently print to an unconnected UART.
+esp-println = { version = "0.18.0", default-features = false, features = [
+    "log-04",
+    "critical-section",
+] }
+esp-backtrace = { version = "0.20.0", features = [
+    "panic-handler",
+    "println",
+] }
+esp-alloc = { version = "0.11.0" }
+embedded-io = "0.7.1"
+embedded-io-async = "0.7.0"
+# The PN532 driver in src/pn532.rs is async and drives this trait directly.
+embedded-hal-async = "1.0.0"
+# only for the i2c error-kind vocab (NAK vs hard error) in our driver
+embedded-hal = "1.0.0"
+# request query parsing reuses picoserve's own serde; responses stay hand-rolled
+serde = { version = "1", default-features = false, features = ["derive"] }
+# WS2812 over RMT (AtomS3 Lite's WS2812C), plus the smart-leds color type.
+esp-hal-smartled = "0.18.0"
+smart-leds = "0.4.0"
+
+embassy-net = { version = "0.9.1", features = [
+    "tcp",
+    "udp",
+    "multicast",
+    "dhcpv4",
+    "medium-ethernet",
+    "log",
+] }
+esp-radio = { version = "1.0.0-beta.1", features = [
+    "wifi",
+    "esp-alloc",
+    "unstable",
+    "log-04",
+] }
+embassy-executor = { version = "0.10.0", features = ["log"] }
+embassy-time = { version = "0.5.0", features = ["log"] }
+embassy-sync = "0.8.0"
+heapless = "0.9.3"
+static_cell = "2.1.1"
+critical-section = "1.2.0"
+
+picoserve = { version = "0.20.1", features = ["embassy", "log"] }
+
+# --- mDNS / DNS-SD responder ---------------------------------------------
+# edge-mdns is a no_std + async mDNS responder; edge-nal is its transport
+# abstraction and edge-nal-embassy implements it on top of embassy-net.
+edge-mdns = "0.8.0"
+edge-nal = "0.7.0"
+edge-nal-embassy = { version = "0.9.0", default-features = false, features = [
+    "proto-ipv4",
+    "medium-ethernet",
+    "udp",
+    "tcp",
+    "icmp",
+    "multicast",
+    "dhcpv4",
+    "dns",
+] }
+# edge-mdns needs a rand_core 0.10 RNG for mDNS jitter
+rand_core = "0.10.0"
+
+# For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1
+debug = 2
+lto = 'fat'
+opt-level = 's'
