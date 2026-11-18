@@ -14,7 +14,7 @@ path = "./src/main.rs"
 [features]
 default = ["board-atoms3lite"]
 
-# M5Stack AtomS3 Lite: PN532 on the Grove port (G1/G2), WS2812C on G35,
+# M5Stack AtomS3 Lite: PN532 on the 8-pin header (G39/G38), WS2812C on G35,
 # logging over the chip's native USB-Serial-JTAG.
 board-atoms3lite = [
     "esp-hal/esp32s3",

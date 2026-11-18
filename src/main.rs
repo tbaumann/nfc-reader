@@ -84,8 +84,9 @@ const MDNS_HOSTNAME: &str = env!("MDNS_HOSTNAME");
 /// GPIO wired to the PN532's RSTPDN (active low), from `PN532_RESET_PIN` in `.env`.
 /// Empty means no reset line is wired and the reader relies on the retry loop
 /// alone. Pin numbers: on the DevKit testbed GPIO25/26/27 are free; on the AtomS3
-/// Lite G5/G6/G7/G8/G38/G39 are on the spare header. Never a pin already in use
-/// (I2C, LED) and never a flash pin (6-11) or a strapping pin (0/2/12/15).
+/// Lite G5/G6/G7 are free on the spare header and G8 is what the printer build
+/// uses. Never a pin already in use (I2C G38/G39, LED G35) and never a flash pin
+/// (6-11) or a strapping pin (0/2/12/15).
 const PN532_RESET_PIN: Option<u8> = parse_pin(env!("PN532_RESET_PIN"));
 
 /// Decimal GPIO number -> pin. `const` because `Shared::new` is a `const fn` (it
@@ -402,11 +403,11 @@ async fn main(spawner: Spawner) -> ! {
         }
     );
 
-    // --- PN532 on I2C: Grove port on the AtomS3 Lite, classic ESP32 defaults
-    // on the DevKit testbed. 4 wires only (no IRQ, no reset), so the driver
-    // polls the status byte.
+    // --- PN532 on I2C: the 8-pin header on the AtomS3 Lite, classic ESP32
+    // defaults on the DevKit testbed. No IRQ line, so the driver polls the
+    // status byte.
     #[cfg(feature = "board-atoms3lite")]
-    let (sda, scl) = (peripherals.GPIO2, peripherals.GPIO1); // Grove: yellow SDA, white SCL
+    let (sda, scl) = (peripherals.GPIO39, peripherals.GPIO38); // header: G39 SDA, G38 SCL
     #[cfg(feature = "board-esp32-devkit")]
     let (sda, scl) = (peripherals.GPIO21, peripherals.GPIO22);
 
@@ -1137,7 +1138,7 @@ async fn http_task(stack: Stack<'static>, id: u8) {
         .route("/nfc/scan", get(get_scan))
         .route("/nfc/ndef", get(get_ndef))
         // Control routes are GET-with-params on purpose: this is a device API
-        // driven by curl and the spooler, and `curl host/nfc/rf?on=false` is
+        // driven by curl, and `curl host/nfc/rf?on=false` is
         // the whole client. There is no cache between them on the LAN.
         .route("/nfc/rf", get(rf_control))
         .route("/nfc/reset", get(get_reset))

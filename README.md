@@ -2,24 +2,29 @@
 
 PN532 card reader for the Evolis Primacy's encoder slot: reads the UID of the card
 at the antenna and serves it over HTTP. Rust + embassy + esp-hal, no Espressif
-framework. Replaces the ESPHome reader in `~/git/ESPuino-label-printer/reader/`
-(kept out of tree until this one is proven on hardware).
+framework.
+
+Hardware installation, wiring and usage:
+[`Evolis-Primacy-Installation.md`](Evolis-Primacy-Installation.md).
 
 ## Hardware
 
 | | AtomS3 Lite (target) | ESP32 DevKit (bench) |
 |---|---|---|
 | chip | ESP32-S3FN8 | WROOM-32, rev3+ (**rev1 will not boot esp-hal**) |
-| I2C SDA | Grove yellow = G2 | G21 |
-| I2C SCL | Grove white = G1 | G22 |
-| PN532 VCC | Grove red = 5V | 5V pin |
+| I2C SDA | G39 | G21 |
+| I2C SCL | G38 | G22 |
+| PN532 VCC | 5V | 5V pin |
+| PN532 RSTPDN | G8 (optional, wired on this build) | not wired |
 | LED | WS2812C on G35 | none (state only in `/nfc/status` and the log) |
 | logging | native USB-Serial-JTAG (`/dev/ttyACM*`) | UART bridge (`/dev/ttyUSB*`, 115200) |
 
+The AtomS3 Lite pins leave the board on its 8-pin header, not the Grove connector.
 PN532: DIP switches **SEL0 ON / SEL1 OFF** = I2C, address 0x24. Power it from 5 V
-for full field range. Only four wires reach it (GND, 5V, SDA, SCL), so there is **no
-IRQ and no reset line** - the driver polls the status byte, and that determines the
-whole design of `src/pn532.rs`.
+for full field range. There is no IRQ line, so the driver polls the status byte
+instead of waiting on an interrupt, and that determines the whole design of
+`src/pn532.rs`. The reset line is optional and is wired on the target only
+(`PN532_RESET_PIN`, see below).
 
 ## Build and flash
 
@@ -95,12 +100,13 @@ see it on a board without an addressable LED.
 Wire the PN532's **RSTPDN** to a spare GPIO and set it in `.env`:
 
 ```
-PN532_RESET_PIN=25
+PN532_RESET_PIN=8          # the printer build; 25 on the DevKit testbed
 ```
 
-DevKit: 25/26/27 are free. AtomS3 Lite spare header: 5/6/7/8/38/39. Never a pin the
-firmware already uses (I2C, LED), a flash pin (6-11), or a strapping pin
-(0/2/12/15). Wire **RSTPDN**, not RSTO - RSTO is an output on the module.
+DevKit: 25/26/27 are free, but never a flash pin (6-11) or a strapping pin
+(0/2/12/15). AtomS3 Lite: **G8** is what the printer build uses, and 5/6/7 are the
+other free header pins (G38/G39 are I2C, G35 the LED). Wire **RSTPDN**, not RSTO -
+RSTO is an output on the module.
 
 With it wired the firmware drives it itself:
 
@@ -158,8 +164,8 @@ the fastest way in.
 
 - **`/nfc/scan` does not force a poll.** It is a cached read with a longer default
   wait, identical in body to `/nfc/card`; the `scan_epoch` field is a placeholder for
-  a real forced poll that was never implemented. Nothing in the spooler path needs
-  one (the reader polls every ~150 ms anyway), so it is left alone deliberately -
+  a real forced poll that was never implemented. Nothing that consumes the reader
+  needs one (it polls every ~150 ms anyway), so it is left alone deliberately -
   if a caller ever needs "is the *antenna* seeing this, not my cache", implement it
   the way the write path does: bump an epoch in the handler, have the reader task do
   the RF round and publish the result, signal a done-signal, and let the handler wait
