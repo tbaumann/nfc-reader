@@ -37,7 +37,9 @@ It is worth reading before you open the printer at all, because it is the same
 panel and the same slot this reader goes into. The photos in this document pick
 up where that walkthrough stops: at what goes _in_ the slot.
 
-![the reader sitting in the encoder slot](images/in-printer.jpg)
+![the reader sitting in the encoder slot](images/in-printer.jpg) You see my
+carrier board comes very close to a transport roller on the left side. Leave
+more clearance.
 
 ## Parts
 
